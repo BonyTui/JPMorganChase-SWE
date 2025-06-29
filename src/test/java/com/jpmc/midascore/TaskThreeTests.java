@@ -8,6 +8,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
 
+import com.jpmc.midascore.repository.UserRepository;
+
 @SpringBootTest
 @DirtiesContext
 @EmbeddedKafka(partitions = 1, brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"})
@@ -22,6 +24,9 @@ public class TaskThreeTests {
 
     @Autowired
     private FileLoader fileLoader;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Test
     void task_three_verifier() throws InterruptedException {
@@ -38,6 +43,10 @@ public class TaskThreeTests {
         logger.info("----------------------------------------------------------");
         logger.info("use your debugger to find out what waldorf's balance is after all transactions are processed");
         logger.info("kill this test once you find the answer");
+        logger.info("kill this test once you find the answer");
+        userRepository.findAll().forEach(user -> 
+            logger.info("User: {}, Balance: {}", user.getName(), user.getBalance())
+        );
         while (true) {
             Thread.sleep(20000);
             logger.info("...");
