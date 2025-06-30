@@ -12,9 +12,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+import org.springframework.web.client.RestTemplate;
+import com.jpmc.midascore.model.Incentive;
+
 @Component
 public class KafkaConsumer {
     private static final Logger logger = LoggerFactory.getLogger(KafkaConsumer.class);
+
+    private final RestTemplate restTemplate;
+    private static final String INCENTIVE_API_URL = "http://localhost:8080/incentive";
 
     private long senderId;
     private long recipientId;
@@ -33,9 +39,11 @@ public class KafkaConsumer {
     private final TransactionRepository transactionRepository;
 
     @Autowired
-    public KafkaConsumer(UserRepository userRepository, TransactionRepository transactionRepository) {
+    public KafkaConsumer(UserRepository userRepository, TransactionRepository transactionRepository, 
+    RestTemplate restTemplate) {
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
+        this.restTemplate = restTemplate;
     }
 
 
@@ -70,8 +78,34 @@ public class KafkaConsumer {
             );
             transactionRepository.save(transactionRecord);
 
+            float incentiveAmount = 0;
+            try {
+                // Log the request
+                logger.info("Sending to incentive API - Transaction: senderId={}, recipientId={}, amount={}", 
+                    transaction.getSenderId(), 
+                    transaction.getRecipientId(), 
+                    transaction.getAmount()
+                );
+
+                // Call Incentive API
+                Incentive incentive = restTemplate.postForObject(
+                    INCENTIVE_API_URL,
+                    transaction,
+                    Incentive.class
+                );
+                incentiveAmount = incentive.getAmount();
+            
+                // Log the full response
+                logger.info("Raw incentive response: {}", incentive);
+                logger.info("Incentive amount: {}", incentiveAmount);
+                logger.info("Incentive toString: {}", incentive.toString());
+            } catch (Exception e) {
+                logger.error("Error calling incentive API: {}", e.getMessage());
+            }
+            
+
             // Update Users
-            recipientBalance += amount;
+            recipientBalance += amount + incentiveAmount;
             recipient.setBalance(recipientBalance);
             senderBalance -= amount;
             sender.setBalance(senderBalance);
